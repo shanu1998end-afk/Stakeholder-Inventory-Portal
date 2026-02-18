@@ -165,17 +165,65 @@ function escapeHtml(text) {
         .replace(/'/g, "&#39;");
 }
 
+function groupEntriesBySection(entries) {
+    const sectionMap = new Map();
+
+    entries.forEach((entry) => {
+        if (!sectionMap.has(entry.section)) {
+            sectionMap.set(entry.section, []);
+        }
+
+        sectionMap.get(entry.section).push(entry);
+    });
+
+    function compareSerials(a, b) {
+        const serialA = Number.parseInt(String(a.ser).trim(), 10);
+        const serialB = Number.parseInt(String(b.ser).trim(), 10);
+        const aIsNumber = Number.isFinite(serialA);
+        const bIsNumber = Number.isFinite(serialB);
+
+        if (aIsNumber && bIsNumber) {
+            return serialA - serialB;
+        }
+
+        if (aIsNumber) {
+            return -1;
+        }
+
+        if (bIsNumber) {
+            return 1;
+        }
+
+        return String(a.ser).localeCompare(String(b.ser), undefined, { numeric: true, sensitivity: "base" });
+    }
+
+    return Array.from(sectionMap, ([section, items]) => ({
+        section,
+        items: [...items].sort(compareSerials)
+    }));
+}
+
 function buildExportTableHtml(entries, formatTitle) {
     const generatedOn = new Date().toLocaleString();
-    const rows = entries.map((entry) => `
-        <tr>
-            <td>${escapeHtml(entry.ser)}</td>
-            <td>${escapeHtml(entry.section)}</td>
-            <td>${escapeHtml(entry.department)}</td>
-            <td>${escapeHtml(entry.phone)}</td>
-            <td>${escapeHtml(entry.email)}</td>
-        </tr>
-    `).join("");
+    const groupedEntries = groupEntriesBySection(entries);
+    const rows = groupedEntries.map((group) => {
+        const sectionRow = `
+            <tr class="section-row">
+                <td colspan="4">Section: ${escapeHtml(group.section)}</td>
+            </tr>
+        `;
+
+        const itemRows = group.items.map((entry) => `
+            <tr>
+                <td>${escapeHtml(entry.ser)}</td>
+                <td>${escapeHtml(entry.department)}</td>
+                <td>${escapeHtml(entry.phone)}</td>
+                <td>${escapeHtml(entry.email)}</td>
+            </tr>
+        `).join("");
+
+        return `${sectionRow}${itemRows}`;
+    }).join("");
 
     return `
         <html>
@@ -189,6 +237,7 @@ function buildExportTableHtml(entries, formatTitle) {
                 table { width: 100%; border-collapse: collapse; }
                 th, td { border: 1px solid #c9d7eb; padding: 8px 10px; vertical-align: top; }
                 th { background: #eaf2fb; color: #1f4f87; text-align: left; font-weight: 700; }
+                .section-row td { background: #dfeeff; color: #1f4f87; font-weight: 700; }
                 tr:nth-child(even) td { background: #f8fbff; }
             </style>
         </head>
@@ -201,7 +250,6 @@ function buildExportTableHtml(entries, formatTitle) {
                 <thead>
                     <tr>
                         <th>Ser.</th>
-                        <th>Section</th>
                         <th>Department</th>
                         <th>Phone</th>
                         <th>Email</th>
@@ -435,17 +483,35 @@ function generateSelectedEntriesPdf(entries) {
     doc.text("Selected Department Entries Report", 40, 58);
     doc.text(`Generated on: ${new Date().toLocaleString()}`, pageWidth - 300, 58);
 
-    const tableRows = entries.map((entry) => [
-        entry.ser,
-        entry.section,
-        entry.department,
-        entry.phone,
-        entry.email
-    ]);
+    const groupedEntries = groupEntriesBySection(entries);
+    const tableRows = [];
+
+    groupedEntries.forEach((group) => {
+        tableRows.push([
+            {
+                content: `Section: ${group.section}`,
+                colSpan: 4,
+                styles: {
+                    fillColor: [223, 238, 255],
+                    textColor: [31, 79, 135],
+                    fontStyle: "bold"
+                }
+            }
+        ]);
+
+        group.items.forEach((entry) => {
+            tableRows.push([
+                entry.ser,
+                entry.department,
+                entry.phone,
+                entry.email
+            ]);
+        });
+    });
 
     doc.autoTable({
         startY: 102,
-        head: [["Ser.", "Section", "Department", "Phone", "Email"]],
+        head: [["Ser.", "Department", "Phone", "Email"]],
         body: tableRows,
         margin: { left: 24, right: 24 },
         styles: {
@@ -468,10 +534,9 @@ function generateSelectedEntriesPdf(entries) {
         },
         columnStyles: {
             0: { cellWidth: 48, halign: "center" },
-            1: { cellWidth: 170 },
-            2: { cellWidth: 250 },
-            3: { cellWidth: 150 },
-            4: { cellWidth: 170 }
+            1: { cellWidth: 290 },
+            2: { cellWidth: 190 },
+            3: { cellWidth: 190 }
         },
         didDrawPage: (data) => {
             doc.setFontSize(9);
