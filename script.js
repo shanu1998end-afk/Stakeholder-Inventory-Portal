@@ -205,27 +205,48 @@ function groupEntriesBySection(entries) {
 
 function buildExportTableHtml(entries, formatTitle) {
     const groupedEntries = groupEntriesBySection(entries);
+    const overallTotal = groupedEntries.reduce((sum, group) => sum + group.items.length, 0);
     const rows = groupedEntries.map((group) => {
         const sectionRow = `
             <tr class="section-row">
-                <td></td>
-                <td class="section-cell">${escapeHtml(group.section)}</td>
-                <td></td>
-                <td></td>
+                <td colspan="4" class="section-cell">${escapeHtml(group.section)}</td>
             </tr>
         `;
 
-        const itemRows = group.items.map((entry) => `
+        const columnRow = `
+            <tr class="inner-head">
+                <td>Ser.</td>
+                <td>Department</td>
+                <td>Phone</td>
+                <td>Email</td>
+            </tr>
+        `;
+
+        const itemRows = group.items.map((entry, itemIndex) => `
             <tr>
-                <td>${escapeHtml(entry.ser)}</td>
+                <td>${itemIndex + 1}</td>
                 <td>${escapeHtml(entry.department)}</td>
                 <td>${escapeHtml(entry.phone)}</td>
                 <td>${escapeHtml(entry.email)}</td>
             </tr>
         `).join("");
 
-        return `${sectionRow}${itemRows}`;
+        const sectionTotalRow = `
+            <tr class="section-total">
+                <td colspan="3">Total Departments in Section</td>
+                <td>${group.items.length}</td>
+            </tr>
+        `;
+
+        return `${sectionRow}${columnRow}${itemRows}${sectionTotalRow}`;
     }).join("");
+
+    const grandTotalRow = `
+        <tr class="grand-total">
+            <td colspan="3">Grand Total Departments</td>
+            <td>${overallTotal}</td>
+        </tr>
+    `;
 
     return `
         <html>
@@ -236,8 +257,10 @@ function buildExportTableHtml(entries, formatTitle) {
                 table { width: 100%; border-collapse: collapse; }
                 th, td { border: 1px solid #2f2f2f; padding: 3px 5px; vertical-align: top; font-size: 11px; line-height: 1.2; }
                 th { background: #234f1e; color: #f5f5f5; text-align: center; font-weight: 700; }
-                .section-row td { background: #ffffff; }
-                .section-row .section-cell { background: #ffe56d; color: #111; font-weight: 700; text-align: center; }
+                .section-row td { background: #ffe56d; color: #111; font-weight: 700; text-align: center; }
+                .inner-head td { background: #234f1e; color: #f5f5f5; font-weight: 700; text-align: center; }
+                .section-total td { background: #eef3ea; font-weight: 700; }
+                .grand-total td { background: #dce9d8; font-weight: 700; }
                 td:first-child { text-align: center; width: 48px; }
                 td:nth-child(2) { width: 52%; }
                 td:nth-child(3), td:nth-child(4) { width: 24%; }
@@ -245,16 +268,9 @@ function buildExportTableHtml(entries, formatTitle) {
         </head>
         <body>
             <table>
-                <thead>
-                    <tr>
-                        <th>Ser.</th>
-                        <th>Department</th>
-                        <th>Phone</th>
-                        <th>Email</th>
-                    </tr>
-                </thead>
                 <tbody>
                     ${rows}
+                    ${grandTotalRow}
                 </tbody>
             </table>
         </body>
@@ -470,55 +486,118 @@ function generateSelectedEntriesPdf(entries) {
     const pageHeight = doc.internal.pageSize.getHeight();
 
     const groupedEntries = groupEntriesBySection(entries);
+    const overallTotal = groupedEntries.reduce((sum, group) => sum + group.items.length, 0);
     const tableRows = [];
 
     groupedEntries.forEach((group) => {
         tableRows.push([
             {
-                content: "",
-                styles: {
-                    fillColor: [255, 255, 255],
-                    textColor: [0, 0, 0]
-                }
-            },
-            {
                 content: group.section,
+                colSpan: 4,
                 styles: {
                     fillColor: [255, 229, 109],
                     textColor: [17, 17, 17],
                     fontStyle: "bold",
                     halign: "center"
                 }
-            },
+            }
+        ]);
+
+        tableRows.push([
             {
-                content: "",
+                content: "Ser.",
                 styles: {
-                    fillColor: [255, 255, 255],
-                    textColor: [0, 0, 0]
+                    fillColor: [35, 79, 30],
+                    textColor: [245, 245, 245],
+                    fontStyle: "bold",
+                    halign: "center"
                 }
             },
             {
-                content: "",
+                content: "Department",
                 styles: {
-                    fillColor: [255, 255, 255],
-                    textColor: [0, 0, 0]
+                    fillColor: [35, 79, 30],
+                    textColor: [245, 245, 245],
+                    fontStyle: "bold",
+                    halign: "center"
+                }
+            },
+            {
+                content: "Phone",
+                styles: {
+                    fillColor: [35, 79, 30],
+                    textColor: [245, 245, 245],
+                    fontStyle: "bold",
+                    halign: "center"
+                }
+            },
+            {
+                content: "Email",
+                styles: {
+                    fillColor: [35, 79, 30],
+                    textColor: [245, 245, 245],
+                    fontStyle: "bold",
+                    halign: "center"
                 }
             }
         ]);
 
-        group.items.forEach((entry) => {
+        group.items.forEach((entry, itemIndex) => {
             tableRows.push([
-                entry.ser,
+                itemIndex + 1,
                 entry.department,
                 entry.phone,
                 entry.email
             ]);
         });
+
+        tableRows.push([
+            {
+                content: "Total Departments in Section",
+                colSpan: 3,
+                styles: {
+                    fillColor: [238, 243, 234],
+                    textColor: [0, 0, 0],
+                    fontStyle: "bold",
+                    halign: "right"
+                }
+            },
+            {
+                content: String(group.items.length),
+                styles: {
+                    fillColor: [238, 243, 234],
+                    textColor: [0, 0, 0],
+                    fontStyle: "bold",
+                    halign: "center"
+                }
+            }
+        ]);
     });
+
+    tableRows.push([
+        {
+            content: "Grand Total Departments",
+            colSpan: 3,
+            styles: {
+                fillColor: [220, 233, 216],
+                textColor: [0, 0, 0],
+                fontStyle: "bold",
+                halign: "right"
+            }
+        },
+        {
+            content: String(overallTotal),
+            styles: {
+                fillColor: [220, 233, 216],
+                textColor: [0, 0, 0],
+                fontStyle: "bold",
+                halign: "center"
+            }
+        }
+    ]);
 
     doc.autoTable({
         startY: 24,
-        head: [["Ser.", "Department", "Phone", "Email"]],
         body: tableRows,
         margin: { left: 16, right: 16 },
         styles: {
@@ -781,7 +860,7 @@ window.onload = function() {
     function setSelectionMode(enabled) {
         isSelectionMode = enabled;
         pdfSelectionPanel.hidden = !enabled;
-        exportPdfToggle.textContent = enabled ? "Selecting..." : "Export PDF";
+        exportPdfToggle.textContent = enabled ? "Selecting..." : "Export Data";
         if (enabled) {
             selectedEntryIds.clear();
         }
