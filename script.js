@@ -116,6 +116,7 @@ const stakeholders = [
 ];
 
 const ADDED_ENTRIES_STORAGE_KEY = "stakeholderAddedEntries";
+const EDITED_ENTRIES_STORAGE_KEY = "stakeholderEditedEntries";
 
 function isPrimaryHeading(row) {
     const isNumber = /^\d+$/.test(String(row.ser).trim());
@@ -155,6 +156,78 @@ function getEntryId(groupTitle, item) {
     return `${groupTitle}::${item.ser}::${item.department}`;
 }
 
+function escapeHtml(text) {
+    return String(text)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
+
+function buildExportTableHtml(entries, formatTitle) {
+    const generatedOn = new Date().toLocaleString();
+    const rows = entries.map((entry) => `
+        <tr>
+            <td>${escapeHtml(entry.ser)}</td>
+            <td>${escapeHtml(entry.section)}</td>
+            <td>${escapeHtml(entry.department)}</td>
+            <td>${escapeHtml(entry.phone)}</td>
+            <td>${escapeHtml(entry.email)}</td>
+        </tr>
+    `).join("");
+
+    return `
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <style>
+                body { font-family: Calibri, Arial, sans-serif; color: #1b2d4c; margin: 24px; }
+                .header { background: #1e5ea6; color: #fff; padding: 16px 18px; border-radius: 8px; margin-bottom: 16px; }
+                .title { font-size: 24px; font-weight: 700; margin: 0 0 6px; }
+                .sub { font-size: 14px; margin: 0; opacity: 0.95; }
+                table { width: 100%; border-collapse: collapse; }
+                th, td { border: 1px solid #c9d7eb; padding: 8px 10px; vertical-align: top; }
+                th { background: #eaf2fb; color: #1f4f87; text-align: left; font-weight: 700; }
+                tr:nth-child(even) td { background: #f8fbff; }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <p class="title">Stakeholder Inventory Portal</p>
+                <p class="sub">${escapeHtml(formatTitle)} | Generated on: ${escapeHtml(generatedOn)}</p>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Ser.</th>
+                        <th>Section</th>
+                        <th>Department</th>
+                        <th>Phone</th>
+                        <th>Email</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rows}
+                </tbody>
+            </table>
+        </body>
+        </html>
+    `;
+}
+
+function downloadBlob(content, mimeType, filename) {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = filename;
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    URL.revokeObjectURL(url);
+}
+
 function getDetailRowDisplayValue() {
     return window.matchMedia("(max-width: 768px)").matches ? "block" : "table-row";
 }
@@ -164,6 +237,7 @@ function renderAccordionTable(groups, expandAll = false, options = {}) {
     tableBody.innerHTML = "";
     const selectionMode = Boolean(options.selectionMode);
     const selectedEntryIds = options.selectedEntryIds instanceof Set ? options.selectedEntryIds : new Set();
+    const editedSerials = options.editedSerials instanceof Set ? options.editedSerials : new Set();
 
     if (groups.length === 0) {
         const noRow = document.createElement("tr");
@@ -218,11 +292,15 @@ function renderAccordionTable(groups, expandAll = false, options = {}) {
             detailRow.style.display = expandAll ? getDetailRowDisplayValue() : "none";
             const entryId = getEntryId(group.title, item);
             detailRow.dataset.entryId = entryId;
+            detailRow.dataset.entrySection = group.title;
+            detailRow.dataset.entrySer = String(item.ser);
+            const isEdited = editedSerials.has(String(item.ser));
 
             if (selectionMode) {
                 detailRow.classList.add("selectable-entry");
                 const selectedClass = selectedEntryIds.has(entryId);
                 detailRow.classList.toggle("is-selected", selectedClass);
+                detailRow.classList.toggle("is-edited", isEdited);
 
                 const serCell = document.createElement("td");
                 serCell.setAttribute("data-label", "Ser.");
@@ -230,11 +308,22 @@ function renderAccordionTable(groups, expandAll = false, options = {}) {
                     <label class="entry-select-wrap">
                         <input type="checkbox" class="select-entry-checkbox" data-entry-id="${entryId}" ${selectedClass ? "checked" : ""}>
                         <span>${item.ser}</span>
+                        ${isEdited ? '<span class="edited-badge">Edited</span>' : ""}
                     </label>
                 `;
                 detailRow.appendChild(serCell);
             } else {
-                appendCell(detailRow, item.ser, "Ser.");
+                const serCell = document.createElement("td");
+                serCell.setAttribute("data-label", "Ser.");
+                serCell.innerHTML = `
+                    <span class="entry-action-cell">
+                        <span>${item.ser}</span>
+                        ${isEdited ? '<span class="edited-badge">Edited</span>' : ""}
+                        <button type="button" class="edit-entry-button" data-entry-ser="${item.ser}" aria-label="Edit entry">Edit</button>
+                    </span>
+                `;
+                detailRow.appendChild(serCell);
+                detailRow.classList.toggle("is-edited", isEdited);
             }
 
             appendCell(detailRow, item.department, "Department");
@@ -398,6 +487,16 @@ function generateSelectedEntriesPdf(entries) {
     doc.save(`stakeholder-selected-entries-${Date.now()}.pdf`);
 }
 
+function generateSelectedEntriesWord(entries) {
+    const html = buildExportTableHtml(entries, "Selected Entries - Word Export");
+    downloadBlob(html, "application/msword", `stakeholder-selected-entries-${Date.now()}.doc`);
+}
+
+function generateSelectedEntriesExcel(entries) {
+    const html = buildExportTableHtml(entries, "Selected Entries - Excel Export");
+    downloadBlob(html, "application/vnd.ms-excel", `stakeholder-selected-entries-${Date.now()}.xls`);
+}
+
 function loadPersistedEntries() {
     try {
         const rawData = window.localStorage.getItem(ADDED_ENTRIES_STORAGE_KEY);
@@ -422,11 +521,44 @@ function loadPersistedEntries() {
     }
 }
 
+function loadEditedEntries() {
+    try {
+        const rawData = window.localStorage.getItem(EDITED_ENTRIES_STORAGE_KEY);
+        if (!rawData) {
+            return [];
+        }
+
+        const parsed = JSON.parse(rawData);
+        if (!Array.isArray(parsed)) {
+            return [];
+        }
+
+        return parsed.filter((entry) =>
+            entry
+            && typeof entry.ser === "string"
+            && typeof entry.sectionTitle === "string"
+            && typeof entry.department === "string"
+            && typeof entry.phone === "string"
+            && typeof entry.email === "string"
+        );
+    } catch (error) {
+        return [];
+    }
+}
+
 function savePersistedEntries(entries) {
     try {
         window.localStorage.setItem(ADDED_ENTRIES_STORAGE_KEY, JSON.stringify(entries));
     } catch (error) {
         console.warn("Unable to persist added entries.", error);
+    }
+}
+
+function saveEditedEntries(entries) {
+    try {
+        window.localStorage.setItem(EDITED_ENTRIES_STORAGE_KEY, JSON.stringify(entries));
+    } catch (error) {
+        console.warn("Unable to persist edited entries.", error);
     }
 }
 
@@ -450,6 +582,43 @@ function applyPersistedEntries(groups, persistedEntries) {
     });
 }
 
+function findEntryBySer(groups, serialNumber) {
+    for (let groupIndex = 0; groupIndex < groups.length; groupIndex += 1) {
+        const itemIndex = groups[groupIndex].items.findIndex((item) => String(item.ser) === String(serialNumber));
+        if (itemIndex !== -1) {
+            return { groupIndex, itemIndex };
+        }
+    }
+
+    return null;
+}
+
+function applyEditedEntries(groups, editedEntries) {
+    editedEntries.forEach((editedEntry) => {
+        const found = findEntryBySer(groups, editedEntry.ser);
+        if (!found) {
+            return;
+        }
+
+        const sourceGroup = groups[found.groupIndex];
+        const originalItem = sourceGroup.items[found.itemIndex];
+        const targetGroupIndex = groups.findIndex((group) => group.title === editedEntry.sectionTitle);
+        if (targetGroupIndex === -1) {
+            return;
+        }
+
+        const updatedItem = {
+            ser: originalItem.ser,
+            department: editedEntry.department,
+            phone: editedEntry.phone,
+            email: editedEntry.email
+        };
+
+        sourceGroup.items.splice(found.itemIndex, 1);
+        groups[targetGroupIndex].items.push(updatedItem);
+    });
+}
+
 function updateSearchStatus(query, groups) {
     const status = document.getElementById("searchStatus");
     if (!query) {
@@ -465,6 +634,8 @@ window.onload = function() {
     let groupedData = buildGroups(stakeholders);
     const persistedEntries = loadPersistedEntries();
     applyPersistedEntries(groupedData, persistedEntries);
+    const persistedEdits = loadEditedEntries();
+    applyEditedEntries(groupedData, persistedEdits);
 
     const tableBody = document.getElementById("tableBody");
     const searchInput = document.getElementById("searchInput");
@@ -473,6 +644,8 @@ window.onload = function() {
     const addEntryToggle = document.getElementById("addEntryToggle");
     const addEntryPanel = document.getElementById("addEntryPanel");
     const addEntryForm = document.getElementById("addEntryForm");
+    const saveEntryButton = document.getElementById("saveEntryButton");
+    const entryPanelTitle = document.getElementById("entryPanelTitle");
     const sectionSelect = document.getElementById("sectionSelect");
     const departmentInput = document.getElementById("departmentInput");
     const phoneInput = document.getElementById("phoneInput");
@@ -482,21 +655,27 @@ window.onload = function() {
     const pdfSelectionPanel = document.getElementById("pdfSelectionPanel");
     const pdfSelectionStatus = document.getElementById("pdfSelectionStatus");
     const generatePdfButton = document.getElementById("generatePdfButton");
+    const generateWordButton = document.getElementById("generateWordButton");
+    const generateExcelButton = document.getElementById("generateExcelButton");
     const cancelPdfSelection = document.getElementById("cancelPdfSelection");
     const selectAllEntries = document.getElementById("selectAllEntries");
     const selectVisibleEntries = document.getElementById("selectVisibleEntries");
     const clearAllEntries = document.getElementById("clearAllEntries");
 
     const addedEntries = [...persistedEntries];
+    const editedEntries = [...persistedEdits];
     const selectedEntryIds = new Set();
     let isSelectionMode = false;
+    let editingEntrySerial = null;
 
     function updatePdfSelectionStatus() {
         const selectedCount = selectedEntryIds.size;
         pdfSelectionStatus.textContent = selectedCount > 0
-            ? `${selectedCount} entr${selectedCount === 1 ? "y" : "ies"} selected for PDF export.`
-            : "Select entries from the table to generate a PDF report.";
+            ? `${selectedCount} entr${selectedCount === 1 ? "y" : "ies"} selected for export.`
+            : "Select entries from the table to generate export documents.";
         generatePdfButton.disabled = selectedCount === 0;
+        generateWordButton.disabled = selectedCount === 0;
+        generateExcelButton.disabled = selectedCount === 0;
     }
 
     function getGroupsByCurrentQuery() {
@@ -511,21 +690,22 @@ window.onload = function() {
     function renderActiveView() {
         const query = searchInput.value.trim().toLowerCase();
         const visibleGroups = getGroupsByCurrentQuery();
+        const editedSerials = new Set(editedEntries.map((entry) => String(entry.ser)));
 
         if (isSelectionMode) {
-            renderAccordionTable(visibleGroups, true, { selectionMode: true, selectedEntryIds });
+            renderAccordionTable(visibleGroups, true, { selectionMode: true, selectedEntryIds, editedSerials });
             updateSearchStatus(query, visibleGroups);
             return;
         }
 
         if (!query) {
-            renderAccordionTable(groupedData, false);
+            renderAccordionTable(groupedData, false, { editedSerials });
             updateSearchStatus("", groupedData);
             return;
         }
 
         const filteredGroups = filterGroups(groupedData, query);
-        renderAccordionTable(filteredGroups, true);
+        renderAccordionTable(filteredGroups, true, { editedSerials });
         updateSearchStatus(query, filteredGroups);
     }
 
@@ -576,6 +756,38 @@ window.onload = function() {
     tableBody.addEventListener("click", (event) => {
         const checkbox = event.target.closest(".select-entry-checkbox");
         if (checkbox) {
+            return;
+        }
+
+        const editButton = event.target.closest(".edit-entry-button");
+        if (editButton) {
+            const detailRow = editButton.closest(".detail-row");
+            if (!detailRow) {
+                return;
+            }
+
+            const entrySer = detailRow.dataset.entrySer;
+            const entrySection = detailRow.dataset.entrySection;
+            if (!entrySer || !entrySection) {
+                return;
+            }
+
+            const found = findEntryBySer(groupedData, entrySer);
+            if (!found) {
+                return;
+            }
+
+            const currentItem = groupedData[found.groupIndex].items[found.itemIndex];
+            editingEntrySerial = String(entrySer);
+            populateSectionOptions(sectionSelect, groupedData);
+            sectionSelect.value = entrySection;
+            departmentInput.value = currentItem.department;
+            phoneInput.value = currentItem.phone;
+            emailInput.value = currentItem.email;
+
+            entryPanelTitle.textContent = "Edit Department Entry";
+            saveEntryButton.textContent = "Update Entry";
+            setEntryPanelVisibility(true);
             return;
         }
 
@@ -676,6 +888,24 @@ window.onload = function() {
         generateSelectedEntriesPdf(selectedEntries);
     });
 
+    generateWordButton.addEventListener("click", () => {
+        const selectedEntries = getSelectedEntries(groupedData, selectedEntryIds);
+        if (!selectedEntries.length) {
+            return;
+        }
+
+        generateSelectedEntriesWord(selectedEntries);
+    });
+
+    generateExcelButton.addEventListener("click", () => {
+        const selectedEntries = getSelectedEntries(groupedData, selectedEntryIds);
+        if (!selectedEntries.length) {
+            return;
+        }
+
+        generateSelectedEntriesExcel(selectedEntries);
+    });
+
     function setEntryPanelVisibility(visible) {
         addEntryPanel.hidden = !visible;
         if (visible) {
@@ -688,6 +918,9 @@ window.onload = function() {
         }
 
         addEntryToggle.textContent = "Add Entry";
+        editingEntrySerial = null;
+        entryPanelTitle.textContent = "Add Department Entry";
+        saveEntryButton.textContent = "Save Entry";
         addEntryForm.reset();
         if (sectionSelect.options.length > 0) {
             sectionSelect.selectedIndex = 0;
@@ -719,22 +952,73 @@ window.onload = function() {
             return;
         }
 
-        const newEntry = {
-            ser: String(getNextSerialNumber(groupedData)),
-            department,
-            phone,
-            email
-        };
+        let targetSerialForScroll = null;
 
-        groupedData[targetGroupIndex].items.push(newEntry);
-        addedEntries.push({
-            sectionTitle: selectedSection,
-            ser: newEntry.ser,
-            department,
-            phone,
-            email
-        });
-        savePersistedEntries(addedEntries);
+        if (editingEntrySerial) {
+            const found = findEntryBySer(groupedData, editingEntrySerial);
+            if (!found) {
+                return;
+            }
+
+            const sourceGroup = groupedData[found.groupIndex];
+            const originalItem = sourceGroup.items[found.itemIndex];
+            const updatedItem = {
+                ser: originalItem.ser,
+                department,
+                phone,
+                email
+            };
+
+            sourceGroup.items.splice(found.itemIndex, 1);
+            groupedData[targetGroupIndex].items.push(updatedItem);
+            targetSerialForScroll = String(updatedItem.ser);
+
+            const editRecord = {
+                ser: String(updatedItem.ser),
+                sectionTitle: selectedSection,
+                department,
+                phone,
+                email
+            };
+
+            const existingEditIndex = editedEntries.findIndex((entry) => entry.ser === editRecord.ser);
+            if (existingEditIndex === -1) {
+                editedEntries.push(editRecord);
+            } else {
+                editedEntries[existingEditIndex] = editRecord;
+            }
+            saveEditedEntries(editedEntries);
+
+            const persistedAddedIndex = addedEntries.findIndex((entry) => entry.ser === String(updatedItem.ser));
+            if (persistedAddedIndex !== -1) {
+                addedEntries[persistedAddedIndex] = {
+                    sectionTitle: selectedSection,
+                    ser: String(updatedItem.ser),
+                    department,
+                    phone,
+                    email
+                };
+                savePersistedEntries(addedEntries);
+            }
+        } else {
+            const newEntry = {
+                ser: String(getNextSerialNumber(groupedData)),
+                department,
+                phone,
+                email
+            };
+
+            groupedData[targetGroupIndex].items.push(newEntry);
+            addedEntries.push({
+                sectionTitle: selectedSection,
+                ser: newEntry.ser,
+                department,
+                phone,
+                email
+            });
+            savePersistedEntries(addedEntries);
+            targetSerialForScroll = String(newEntry.ser);
+        }
 
         searchInput.value = "";
         renderActiveView();
@@ -744,6 +1028,15 @@ window.onload = function() {
             if (targetGroupRow) {
                 toggleGroup(targetGroupRow);
                 targetGroupRow.scrollIntoView({ behavior: "smooth", block: "center" });
+            }
+
+            if (targetSerialForScroll) {
+                const targetRow = Array.from(tableBody.querySelectorAll(".detail-row")).find(
+                    (row) => row.dataset.entrySer === targetSerialForScroll
+                );
+                if (targetRow) {
+                    targetRow.scrollIntoView({ behavior: "smooth", block: "center" });
+                }
             }
         }
 

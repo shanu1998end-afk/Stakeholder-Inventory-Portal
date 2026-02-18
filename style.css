@@ -222,6 +222,8 @@ body {
 }
 
 #generatePdfButton,
+#generateWordButton,
+#generateExcelButton,
 #cancelPdfSelection {
     height: 42px;
     border: 0;
@@ -233,11 +235,21 @@ body {
     background: linear-gradient(180deg, var(--blue-700) 0%, #0f4f9a 100%);
 }
 
+#generateWordButton {
+    background: linear-gradient(180deg, #2d8f72 0%, #1f725b 100%);
+}
+
+#generateExcelButton {
+    background: linear-gradient(180deg, #2c7f58 0%, #1d5f3f 100%);
+}
+
 #cancelPdfSelection {
     background: linear-gradient(180deg, #7388a4 0%, #4a5f7d 100%);
 }
 
-#generatePdfButton:disabled {
+#generatePdfButton:disabled,
+#generateWordButton:disabled,
+#generateExcelButton:disabled {
     opacity: 0.55;
     cursor: not-allowed;
 }
@@ -428,6 +440,37 @@ td {
     color: #1d5ea6;
     text-align: right;
     padding-right: 14px;
+}
+
+.entry-action-cell {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.edited-badge {
+    display: inline-flex;
+    align-items: center;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: #fff1cf;
+    color: #8b5e00;
+    border: 1px solid #f0cc7c;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+}
+
+.edit-entry-button {
+    border: 0;
+    border-radius: 4px;
+    background: linear-gradient(180deg, #4c7fb9 0%, #2f5e93 100%);
+    color: #fff;
+    cursor: pointer;
+    height: 24px;
+    padding: 0 8px;
+    font-size: 0.75rem;
 }
 
 .entry-select-wrap {
@@ -655,6 +698,8 @@ td {
     #saveEntryButton,
     #cancelEntryButton,
     #generatePdfButton,
+    #generateWordButton,
+    #generateExcelButton,
     #cancelPdfSelection,
     #selectAllEntries,
     #selectVisibleEntries,

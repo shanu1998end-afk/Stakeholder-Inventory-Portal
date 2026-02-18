@@ -31,21 +31,23 @@
     </section>
 
     <section id="pdfSelectionPanel" class="pdf-selection-section card-panel" hidden>
-        <h2>Select Entries for PDF</h2>
-        <p id="pdfSelectionStatus">Select entries from the table to generate a PDF report.</p>
+        <h2>Select Entries for Export</h2>
+        <p id="pdfSelectionStatus">Select entries from the table to generate export documents.</p>
         <div class="bulk-select-actions">
             <button id="selectAllEntries" type="button">Select All</button>
             <button id="selectVisibleEntries" type="button">Select Visible</button>
             <button id="clearAllEntries" type="button">Clear Selection</button>
         </div>
         <div class="form-actions">
-            <button id="generatePdfButton" type="button" disabled>Generate PDF</button>
+            <button id="generatePdfButton" type="button" disabled>Export PDF</button>
+            <button id="generateWordButton" type="button" disabled>Export Word</button>
+            <button id="generateExcelButton" type="button" disabled>Export Excel</button>
             <button id="cancelPdfSelection" type="button">Cancel</button>
         </div>
     </section>
 
     <section id="addEntryPanel" class="add-entry-section card-panel" hidden>
-        <h2>Add Department Entry</h2>
+        <h2 id="entryPanelTitle">Add Department Entry</h2>
         <form id="addEntryForm" class="add-entry-form">
             <div class="form-field">
                 <label for="sectionSelect">Section</label>
