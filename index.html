@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stakeholder Inventory Portal</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="portal-header">
+    <div class="header-logo left-logo">
+        <img src="gov of pakistan logo.jpg" alt="Government of Pakistan Logo">
+    </div>
+    <div class="header-text">
+        <h1>Stakeholder Inventory Portal</h1>
+        <p>Infrastructure Advisory & Project Development Wing</p>
+    </div>
+    <div class="header-logo right-logo">
+        <img src="NDMA Logo.png" alt="NDMA Logo">
+    </div>
+</header>
+
+<main class="page-shell">
+    <section class="search-section card-panel">
+        <input type="text" id="searchInput" placeholder="Search by department, phone, or email">
+        <button id="searchButton" type="button">Search</button>
+        <button id="resetButton" type="button">Reset</button>
+        <button id="addEntryToggle" type="button">Add Entry</button>
+        <button id="exportPdfToggle" type="button">Export PDF</button>
+    </section>
+
+    <section id="pdfSelectionPanel" class="pdf-selection-section card-panel" hidden>
+        <h2>Select Entries for PDF</h2>
+        <p id="pdfSelectionStatus">Select entries from the table to generate a PDF report.</p>
+        <div class="bulk-select-actions">
+            <button id="selectAllEntries" type="button">Select All</button>
+            <button id="selectVisibleEntries" type="button">Select Visible</button>
+            <button id="clearAllEntries" type="button">Clear Selection</button>
+        </div>
+        <div class="form-actions">
+            <button id="generatePdfButton" type="button" disabled>Generate PDF</button>
+            <button id="cancelPdfSelection" type="button">Cancel</button>
+        </div>
+    </section>
+
+    <section id="addEntryPanel" class="add-entry-section card-panel" hidden>
+        <h2>Add Department Entry</h2>
+        <form id="addEntryForm" class="add-entry-form">
+            <div class="form-field">
+                <label for="sectionSelect">Section</label>
+                <select id="sectionSelect" required></select>
+            </div>
+            <div class="form-field">
+                <label for="departmentInput">Department</label>
+                <input id="departmentInput" type="text" placeholder="Enter department name" required>
+            </div>
+            <div class="form-field">
+                <label for="phoneInput">Phone</label>
+                <input id="phoneInput" type="text" placeholder="Enter phone" required>
+            </div>
+            <div class="form-field">
+                <label for="emailInput">Email</label>
+                <input id="emailInput" type="text" placeholder="Enter email" required>
+            </div>
+            <div class="form-actions">
+                <button id="saveEntryButton" type="submit">Save Entry</button>
+                <button id="cancelEntryButton" type="button">Cancel</button>
+            </div>
+        </form>
+    </section>
+
+    <section class="table-section card-panel">
+        <p id="searchStatus" class="search-status"></p>
+        <div class="table-wrapper">
+            <table id="stakeholderTable">
+                <thead>
+                    <tr>
+                        <th>Ser.</th>
+                        <th>Department</th>
+                        <th>Phone</th>
+                        <th>Email</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                </tbody>
+            </table>
+        </div>
+    </section>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="script.js"></script>
+</body>
+</html>
