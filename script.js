@@ -204,12 +204,14 @@ function groupEntriesBySection(entries) {
 }
 
 function buildExportTableHtml(entries, formatTitle) {
-    const generatedOn = new Date().toLocaleString();
     const groupedEntries = groupEntriesBySection(entries);
     const rows = groupedEntries.map((group) => {
         const sectionRow = `
             <tr class="section-row">
-                <td colspan="4">Section: ${escapeHtml(group.section)}</td>
+                <td></td>
+                <td class="section-cell">${escapeHtml(group.section)}</td>
+                <td></td>
+                <td></td>
             </tr>
         `;
 
@@ -230,22 +232,18 @@ function buildExportTableHtml(entries, formatTitle) {
         <head>
             <meta charset="UTF-8">
             <style>
-                body { font-family: Calibri, Arial, sans-serif; color: #1b2d4c; margin: 24px; }
-                .header { background: #1e5ea6; color: #fff; padding: 16px 18px; border-radius: 8px; margin-bottom: 16px; }
-                .title { font-size: 24px; font-weight: 700; margin: 0 0 6px; }
-                .sub { font-size: 14px; margin: 0; opacity: 0.95; }
+                body { font-family: Calibri, Arial, sans-serif; color: #1b2d4c; margin: 10px; }
                 table { width: 100%; border-collapse: collapse; }
-                th, td { border: 1px solid #c9d7eb; padding: 8px 10px; vertical-align: top; }
-                th { background: #eaf2fb; color: #1f4f87; text-align: left; font-weight: 700; }
-                .section-row td { background: #dfeeff; color: #1f4f87; font-weight: 700; }
-                tr:nth-child(even) td { background: #f8fbff; }
+                th, td { border: 1px solid #2f2f2f; padding: 3px 5px; vertical-align: top; font-size: 11px; line-height: 1.2; }
+                th { background: #234f1e; color: #f5f5f5; text-align: center; font-weight: 700; }
+                .section-row td { background: #ffffff; }
+                .section-row .section-cell { background: #ffe56d; color: #111; font-weight: 700; text-align: center; }
+                td:first-child { text-align: center; width: 48px; }
+                td:nth-child(2) { width: 52%; }
+                td:nth-child(3), td:nth-child(4) { width: 24%; }
             </style>
         </head>
         <body>
-            <div class="header">
-                <p class="title">Stakeholder Inventory Portal</p>
-                <p class="sub">${escapeHtml(formatTitle)} | Generated on: ${escapeHtml(generatedOn)}</p>
-            </div>
             <table>
                 <thead>
                     <tr>
@@ -469,19 +467,7 @@ function generateSelectedEntriesPdf(entries) {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
     const pageWidth = doc.internal.pageSize.getWidth();
-
-    doc.setFillColor(16, 74, 140);
-    doc.rect(0, 0, pageWidth, 86, "F");
-
-    doc.setTextColor(255, 255, 255);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(20);
-    doc.text("Stakeholder Inventory Portal", 40, 38);
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(12);
-    doc.text("Selected Department Entries Report", 40, 58);
-    doc.text(`Generated on: ${new Date().toLocaleString()}`, pageWidth - 300, 58);
+    const pageHeight = doc.internal.pageSize.getHeight();
 
     const groupedEntries = groupEntriesBySection(entries);
     const tableRows = [];
@@ -489,12 +475,33 @@ function generateSelectedEntriesPdf(entries) {
     groupedEntries.forEach((group) => {
         tableRows.push([
             {
-                content: `Section: ${group.section}`,
-                colSpan: 4,
+                content: "",
                 styles: {
-                    fillColor: [223, 238, 255],
-                    textColor: [31, 79, 135],
-                    fontStyle: "bold"
+                    fillColor: [255, 255, 255],
+                    textColor: [0, 0, 0]
+                }
+            },
+            {
+                content: group.section,
+                styles: {
+                    fillColor: [255, 229, 109],
+                    textColor: [17, 17, 17],
+                    fontStyle: "bold",
+                    halign: "center"
+                }
+            },
+            {
+                content: "",
+                styles: {
+                    fillColor: [255, 255, 255],
+                    textColor: [0, 0, 0]
+                }
+            },
+            {
+                content: "",
+                styles: {
+                    fillColor: [255, 255, 255],
+                    textColor: [0, 0, 0]
                 }
             }
         ]);
@@ -510,41 +517,38 @@ function generateSelectedEntriesPdf(entries) {
     });
 
     doc.autoTable({
-        startY: 102,
+        startY: 24,
         head: [["Ser.", "Department", "Phone", "Email"]],
         body: tableRows,
-        margin: { left: 24, right: 24 },
+        margin: { left: 16, right: 16 },
         styles: {
             font: "helvetica",
-            fontSize: 9,
-            cellPadding: 7,
-            textColor: [28, 42, 65],
-            lineColor: [203, 216, 234],
+            fontSize: 8,
+            cellPadding: 3,
+            textColor: [0, 0, 0],
+            lineColor: [47, 47, 47],
             lineWidth: 0.5,
             overflow: "linebreak"
         },
         headStyles: {
-            fillColor: [30, 93, 166],
-            textColor: [255, 255, 255],
+            fillColor: [35, 79, 30],
+            textColor: [245, 245, 245],
             fontStyle: "bold",
             halign: "center"
         },
-        alternateRowStyles: {
-            fillColor: [247, 251, 255]
-        },
         columnStyles: {
             0: { cellWidth: 48, halign: "center" },
-            1: { cellWidth: 290 },
-            2: { cellWidth: 190 },
-            3: { cellWidth: 190 }
+            1: { cellWidth: 330 },
+            2: { cellWidth: 175 },
+            3: { cellWidth: 175 }
         },
-        didDrawPage: (data) => {
+        didDrawPage: () => {
             doc.setFontSize(9);
-            doc.setTextColor(90, 108, 134);
+            doc.setTextColor(90, 90, 90);
             doc.text(
                 `Page ${doc.internal.getNumberOfPages()}`,
-                pageWidth - 70,
-                doc.internal.pageSize.getHeight() - 14
+                pageWidth - 58,
+                pageHeight - 10
             );
         }
     });
